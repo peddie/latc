@@ -23,17 +23,26 @@ module Numeric.LATC.NestedList (
                                , toList
                                , length
                                , map
+                               , vbinary
+                               , vindex
+                               , vconcat
                                 -- ** Structural functions on a @Matrix@
                                , fromLists
                                , toLists
                                , size
                                , mmap
                                , transpose
+                               , mbinary
+                               , mindex
+                               , mconcatrows
+                               , mconcatcols
                                 -- ** Structural functions between @Vector@s and @Matrix@es
                                , toRows
                                , fromRows
                                , toCols
                                , fromCols
+                               , mCol
+                               , mRow
                                 -- * Math functions
                                , matvec
                                , vecmat
@@ -74,7 +83,20 @@ length (Vector v) = P.length v
 map :: (a -> b) -> Vector a -> Vector b
 map f (Vector v) = Vector $ P.map f v
 
--- | Convert a list of lists to a @Matrix@ (column-major)
+-- | Apply a binary function @f@ to two @Vector@s
+vbinary :: (a -> b -> c) -> Vector a -> Vector b -> Vector c
+vbinary f (Vector v1) (Vector v2) = Vector $ P.zipWith f v1 v2
+
+-- | Return the element at the given position in the vector.
+-- Zero-indexed.
+vindex :: Vector a -> Int -> a
+vindex (Vector v) i = v !! i
+
+-- | Concatenate two vectors end-to-end.
+vconcat :: Vector a -> Vector a -> Vector a
+vconcat (Vector v1) (Vector v2) = Vector $ v1 ++ v2
+
+-- | Convert a list of lists to a @Matrix@ (row-major)
 fromLists :: [[b]] -> Matrix b
 fromLists = Matrix
 
@@ -96,21 +118,48 @@ mmap f (Matrix m) = Matrix $ P.map (P.map f) m
 transpose :: Matrix a -> Matrix a
 transpose = Matrix . DL.transpose . unmatrix
 
+-- | Apply a binary function @f@ to two @Matrix@es
+mbinary :: (a -> b -> c) -> Matrix a -> Matrix b -> Matrix c
+mbinary f (Matrix m1) (Matrix m2) = Matrix $ P.zipWith veczip m1 m2
+    where veczip = P.zipWith f
+
+-- | Return the element at the given @(row, column)@ position
+mindex :: Matrix a -> (Int, Int) -> a
+mindex (Matrix m) (r, c) = (m !! r) !! c
+
+-- | Concatenate two matrices such that their rows are now
+-- concatenated
+mconcatrows :: Matrix a -> Matrix a -> Matrix a
+mconcatrows (Matrix m1) (Matrix m2) = Matrix $ P.zipWith (++) m1 m2
+
+-- | Concatenate two matrices such that their columns are now
+-- concatenated
+mconcatcols :: Matrix a -> Matrix a -> Matrix a
+mconcatcols (Matrix m1) (Matrix m2) = Matrix $ DL.transpose $ P.zipWith (++) (DL.transpose m1) (DL.transpose m2)
+
 -- | Split a matrix into a list of vectors of its columns
 toCols :: Matrix a -> [Vector a]
-toCols (Matrix m) = P.map Vector m
+toCols (Matrix m) = P.map Vector $ DL.transpose m
 
 -- | Form a matrix out of a list of vectors of its columns
 fromCols :: [Vector a] -> Matrix a
-fromCols vs = Matrix $ P.map toList vs
+fromCols vs = Matrix $ DL.transpose $ P.map toList vs
 
 -- | Split a matrix into a list of vectors of its rows
 toRows :: Matrix a -> [Vector a]
-toRows (Matrix m) = P.map Vector $ DL.transpose m
+toRows (Matrix m) = P.map Vector m
 
 -- | Form a matrix out of a list of vectors of its rows
 fromRows :: [Vector a] -> Matrix a
-fromRows vs = Matrix $ DL.transpose $ P.map toList vs
+fromRows vs = Matrix $ P.map toList vs
+
+-- | Get the specified row vector from a matrix
+mRow :: Matrix a -> Int -> Vector a
+mRow (Matrix m) i = Vector $ m !! i
+
+-- | Get the specified column vector from a matrix
+mCol :: Matrix a -> Int -> Vector a
+mCol (Matrix m) i = Vector $ (DL.transpose m) !! i
 
 -- | Multiply a matrix by a column vector
 matvec :: Num b => Matrix b -> Vector b -> Vector b
