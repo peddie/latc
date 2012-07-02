@@ -29,7 +29,7 @@ source-repository head
 Library
   build-depends: base == 4.*, repa == 3.2.*, hmatrix == 0.14.*, containers == 0.4.*, vector == 0.9.*, ghc-prim
 
-  exposed-modules: Numeric.LATC, Numeric.LATC.NestedList, Numeric.LATC.NestedVector, Numeric.LATC.SparseIntMap
+  exposed-modules: Numeric.LATC, Numeric.LATC.NestedList, Numeric.LATC.NestedVector
   other-modules: 
   ghc-options: -O2 
 
