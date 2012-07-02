@@ -76,12 +76,23 @@ type Vec v e = (Vector v, VBox v e)
 class Vector v where
     type VBox v e :: Constraint
     type VBox v e = (Vector v)
+    -- | Convert a list of elements into a vector
     fromList :: Vec v e => [e] -> v e
+    -- | Convert a vector into a list of elements
     toList :: Vec v e => v e -> [e]
+    -- | Return how many elements are in a vector
     length :: Vec v e => v e -> Int
+    -- | Apply a function to each element of a vector and return the
+    -- results in a vector.
     map :: (Vec v e, Vec v f) => (e -> f) -> v e -> v f
+    -- | Apply a binary operation, element-wise, to a pair of vectors,
+    -- and return the results in a vector.
     vbinary :: (Vec v e, Vec v f, Vec v g) => (e -> f -> g) -> v e -> v f -> v g
+    -- | Return the element at the given position within the vector:
+    -- @vindex (fromList [22]) 0 == 22@
     vindex :: Vec v e => v e -> Int -> e
+    -- | Concatenate two vectors end-to-end: @vconcat (fromList
+    -- [22,23]) (fromList [24, 25]) == fromList [22..25]@
     vconcat :: Vec v e => v e -> v e -> v e
 
 -- | Matrix works similarly to Vector.
@@ -90,14 +101,28 @@ type Mat m e = (Matrix m, MBox m e)
 class Matrix m where
     type MBox m e :: Constraint
     type MBox m e = (Matrix m)
+    -- | Convert a row-major nested list of elements into a matrix.
     fromLists :: Mat m e => [[e]] -> m e
+    -- | Convert a matrix into a row-major nested list of elements.
     toLists :: Mat m e => m e -> [[e]]
+    -- | Return how many (rows, columns) are in a matrix.
     size :: Mat m e => m e -> (Int, Int)
+    -- | Apply a function to each element of a matrix and return the
+    -- results in a matrix.
     mmap :: (Mat m e, Mat m f) => (e -> f) -> m e -> m f
+    -- | Transpose a matrix.
     transpose :: Mat m e => m e -> m e
+    -- | Apply a binary operation, element-wise, to a pair of
+    -- matrices, and return the results in a new matrix.
     mbinary :: (Mat m e, Mat m f, Mat m g) => (e -> f -> g) -> m e -> m f -> m g
+    -- | Return the element at the given position within the matrix:
+    -- @mindex (fromLists [[22]]) (0, 0) == 22@
     mindex :: Mat m e => m e -> (Int, Int) -> e
+    -- | Concatenate two matrices such that their rows are now
+    -- concatenated (i.e. side-by-side).
     mconcatrows :: Mat m e => m e -> m e -> m e
+    -- | Concatenate two matrices such that their columns are now
+    -- concatenated (i.e. top-to-bottom).
     mconcatcols :: Mat m e => m e -> m e -> m e
 
 -- | Related types for matrices and vectors.  These methods involve
@@ -108,12 +133,20 @@ type MatVec m v e = (Matrix m, Vector v, MVBox m v e)
 class (Matrix m, Vector v) => MV m v where
     type MVBox m v e :: Constraint
     type MVBox m v e = (MBox m e, VBox v e)
+    -- | Form a matrix from a list of row vectors.
     fromRows :: MatVec m v e => [v e] -> m e
+    -- | Split a matrix into a list of row vectors.
     toRows :: MatVec m v e => m e -> [v e]
-    fromCols :: MatVec m v e => [v e] -> m e
-    toCols :: MatVec m v e => m e -> [v e]
-    mCol :: MatVec m v e => m e -> Int -> v e
+    -- | Return the row vector at the specified index within the
+    -- matrix: @mRow (fromLists [[22]]) 0 == fromList [22]@
     mRow :: MatVec m v e => m e -> Int -> v e
+    -- | Form a matrix from a list of column vectors.
+    fromCols :: MatVec m v e => [v e] -> m e
+    -- | Split a matrix into a list of column vectors.
+    toCols :: MatVec m v e => m e -> [v e]
+    -- | Return the column vector at the specified index within the
+    -- matrix: @mCol (fromLists [[22]]) 0 == fromList [22]@
+    mCol :: MatVec m v e => m e -> Int -> v e
 
 -- | Linear algebra on matrices and vectors.  These methods involve
 -- both structures, and they require operands to have numeric
@@ -123,10 +156,15 @@ type LA m v e = (Vec v e, Mat m e, MatVec m v e, LinAlgBox m v e)
 class MV m v => LinAlg m v where
     type LinAlgBox m v e :: Constraint 
     type LinAlgBox m v e = (MBox m e, VBox v e, Num e)
+    -- | Multiply a matrix by a column vector.
     mv :: LA m v e => m e -> v e -> v e
+    -- | Multiply a row vector by a matrix.
     vm :: LA m v e => v e -> m e -> v e
+    -- | Multiply two matrices.
     mm :: LA m v e => m e -> m e -> m e
+    -- | Form a matrix by the outer product of two vectors.
     outer :: LA m v e => v e -> v e -> m e
+    -- | Compute the inner (dot) product of two vectors.
     inner :: LA m v e => v e -> v e -> e
 
 -- | Sparse vectors.  A sparse vector backend must be an instance of
@@ -170,6 +208,9 @@ instance Vector NL.Vector where
     toList = NL.toList
     length = NL.length
     map = NL.map
+    vbinary = NL.vbinary
+    vindex = NL.vindex
+    vconcat = NL.vconcat
 
 instance Matrix NL.Matrix where
     type MBox NL.Matrix e = ()
@@ -178,6 +219,10 @@ instance Matrix NL.Matrix where
     size = NL.size
     mmap = NL.mmap
     transpose = NL.transpose
+    mbinary = NL.mbinary
+    mindex = NL.mindex
+    mconcatrows = NL.mconcatrows
+    mconcatcols = NL.mconcatcols
 
 instance MV NL.Matrix NL.Vector where
     type MVBox NL.Matrix NL.Vector e = ()
@@ -185,6 +230,8 @@ instance MV NL.Matrix NL.Vector where
     toCols = NL.toCols
     fromRows = NL.fromRows
     toRows = NL.toRows
+    mCol = NL.mCol
+    mRow = NL.mRow
 
 instance LinAlg NL.Matrix NL.Vector where
     type LinAlgBox NL.Matrix NL.Vector e = Num e 
