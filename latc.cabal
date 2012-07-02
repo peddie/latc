@@ -1,0 +1,37 @@
+Name:               latc
+Version:            0.0.1
+License:            GPL-3
+License-file:       COPYING
+Author:             Matthew Peddie
+Maintainer:         Matthew Peddie <peddie@alum.mit.edu>
+Category:           Numeric
+Synopsis:           Generalized interface for numerical linear algebra
+
+Description: 	    
+
+LATC provides a common interface for writing numerical code, with a
+strong emphasis on linear algebra.  Many different backends can be
+used with this interface; the current version supports HMatrix
+(BLAS/LAPACK), Repa, naive lists, vectors, IntMaps and more.
+
+Homepage: https://github.com/peddie/latc
+
+build-type:         Simple
+cabal-version:      >= 1.8
+
+extra-source-files: 
+data-files:         
+
+tested-with:        GHC == 7.4.1
+
+source-repository head
+  type: git
+  location: git://github.com/peddie/latc.git
+
+Library
+  build-depends: base == 4.*, repa == 3.2.*, hmatrix == 0.14.*, containers == 0.4.*, vector == 0.9.*, ghc-prim
+
+  exposed-modules: Numeric.LATC, Numeric.LATC.NestedList, Numeric.LATC.NestedVector, Numeric.LATC.SparseIntMap
+  other-modules: 
+  ghc-options: -O2 
+

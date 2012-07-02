@@ -12,13 +12,19 @@ we'd like to allow it to be used with multiple backends, including
 Current status
 --------------
 
-This works, and the type signature is correctly inferred.
+This works, and the type signature is correctly inferred:
 
     cosmap a = map cos a
 
+    *CKLA> :t cosmap 
+    cosmap :: (VBox v f, Floating f, Vector v) => v f -> v f
+    
 This works if you disable the monomorphism restriction: 
 
     cosmap = map cos
+
+    *CKLA> :t cosmap
+    cosmap :: (VBox v f, Floating f, Vector v) => v f -> v f
 
 This works too: 
 
