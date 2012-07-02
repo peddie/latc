@@ -31,5 +31,5 @@ Library
 
   exposed-modules: Numeric.LATC, Numeric.LATC.NestedList, Numeric.LATC.NestedVector
   other-modules: 
-  ghc-options: -O2 
+  ghc-options: -O2 -dcore-lint
 

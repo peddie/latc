@@ -1,5 +1,4 @@
 {-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
@@ -156,30 +155,24 @@ class Matrix m => SMatrix m where
 -- Instances --
 ---------------
 
--- Here I started to define List instances for both Vector and Matrix,
--- and add class default methods in terms of fromList, toList and the
--- methods for these instances.  This way, a minimal (but inefficient)
--- instance of these classes is merely "fromList" and "toList", and
--- better implementations can be added incrementally.  Unfortunately,
--- I don't know how to tell the compiler that I want to use nested
--- lists as matrices.  I can use the NestedList type synonym, but I
--- can't implement any methods!
--- 
--- type NestedList = [] :. []
--- instance Matrix NestedList where
--- 
--- Instead, we have to resort to a newtype and unpack from a
--- constructor every time.  This may be better in the long run anyway.
-
 -- List instances
 
+-------------------
+-- WARNING WARNING WARNING
+-- 
+-- You have to explicitly give the associated data type definition for
+-- EVERY INSTANCE, even though all the classes have sane defaults.  I
+-- think this is a GHC bug.
+
 instance Vector NL.Vector where
+    type VBox NL.Vector e = ()
     fromList = NL.fromList
     toList = NL.toList
     length = NL.length
     map = NL.map
 
 instance Matrix NL.Matrix where
+    type MBox NL.Matrix e = ()
     fromLists = NL.fromLists
     toLists = NL.toLists
     size = NL.size
@@ -187,12 +180,14 @@ instance Matrix NL.Matrix where
     transpose = NL.transpose
 
 instance MV NL.Matrix NL.Vector where
+    type MVBox NL.Matrix NL.Vector e = ()
     fromCols = NL.fromCols
     toCols = NL.toCols
     fromRows = NL.fromRows
     toRows = NL.toRows
 
 instance LinAlg NL.Matrix NL.Vector where
+    type LinAlgBox NL.Matrix NL.Vector e = Num e 
     mv = NL.matvec
     vm = NL.vecmat
     mm = NL.matmat
@@ -208,12 +203,14 @@ instance LinAlg NL.Matrix NL.Vector where
 -- instance Matrix NestedVector where
 
 instance Vector DV.Vector where
+    type VBox DV.Vector e = ()
     fromList = DV.fromList
     toList = DV.toList
     length = DV.length
     map = DV.map
 
 instance Matrix NV.Matrix where
+    type MBox NV.Matrix e = ()
     fromLists = NV.fromLists
     toLists = NV.toLists
     size = NV.size
@@ -221,12 +218,14 @@ instance Matrix NV.Matrix where
     transpose = NV.transpose
 
 instance MV NV.Matrix DV.Vector where
+    type MVBox NV.Matrix DV.Vector e = ()
     fromCols = NV.fromCols
     toCols = NV.toCols
     fromRows = NV.fromRows
     toRows = NV.toRows
 
 instance LinAlg NV.Matrix DV.Vector where
+    type LinAlgBox NV.Matrix DV.Vector e = Num e 
     mv = NV.matvec
     vm = NV.vecmat
     mm = NV.matmat
