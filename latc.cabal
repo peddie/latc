@@ -1,5 +1,5 @@
 Name:               latc
-Version:            0.0.1
+Version:            0.0.2
 License:            GPL-3
 License-file:       COPYING
 Author:             Matthew Peddie
@@ -7,10 +7,21 @@ Maintainer:         Matthew Peddie <peddie@alum.mit.edu>
 Category:           Numeric
 Synopsis:           Generalized interface for numerical linear algebra
 
-Description:        LATC provides a common interface for writing numerical code, with a
-                    strong emphasis on linear algebra.  Many different backends can be
-                    used with this interface; the current version supports HMatrix
-                    (BLAS/LAPACK), Repa, naive lists, vectors, IntMaps and more.
+Description: { LATC provides a common interface for writing numerical
+  code, with a strong emphasis on linear algebra.  Many different
+  backends can be used with this interface; the current version
+  supports HMatrix (BLAS/LAPACK), Repa, naive lists, vectors, IntMaps
+  and more.
+
+  It uses GHC-specific features like @ConstraintKinds@ and
+  @TypeFamilies@ to propagate type constraints for different backends
+  to user code; the advantage is that you should be able to run the
+  same piece of code using any backend you like, and if you've written
+  something that a particular backend can't support, the type
+  constraints will tell you what's wrong (rather than GHC requiring
+  you to go back through all your code and add a bunch of constraints
+  so you can use HMatrix, for example)
+}
 
 Homepage: https://github.com/peddie/latc
 
