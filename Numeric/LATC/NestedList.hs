@@ -14,7 +14,8 @@
 -- Stability   :  experimental
 -- Portability :  GHC
 --
--- Nested lists as a linear algebra backend
+-- Nested lists as a linear algebra backend.  Note that very few of
+-- these functions check the sizes of anything!
 -----------------------------------------------------------------------------
 
 module Numeric.LATC.NestedList (
@@ -112,7 +113,7 @@ import Test.QuickCheck (Arbitrary(..), listOf, vectorOf, choose)
 
 import qualified Numeric.LATC as LATC
 
--- | A vector abstraction for lists
+-- | A vector abstraction for lists.
 newtype Vector a = Vector {unvector :: [a]} deriving (Eq, Ord, Data, Typeable, Generic)
 
 instance Show a => Show (Vector a) where
@@ -170,7 +171,7 @@ instance Foldable Vector where
 instance Arbitrary a => Arbitrary (Vector a) where
     arbitrary = liftM fromList $ listOf $ arbitrary
 
--- | A matrix abstraction for nested lists
+-- | A matrix abstraction for nested lists.
 newtype Matrix a = Matrix {unmatrix :: [[a]]} deriving (Eq, Ord, Data, Typeable, Generic)
 
 instance Show a => Show (Matrix a) where
@@ -463,7 +464,7 @@ mlift2r f a b = Matrix $ zipWith f a' b'
 -- | Lift a binary list operation to a @Matrix@ operation on its columns
 mlift2c :: ([a] -> [b] -> [c]) -> Matrix a -> Matrix b -> Matrix c
 mlift2c f a b = Matrix $ DL.transpose $ zipWith f a' b'
-    where (a', b') = fmap DL.transpose (unmatrix a, unmatrix b)
+    where (a', b') = (DL.transpose $ unmatrix a, DL.transpose $ unmatrix b)
 
 -- | Concatenate two matrices so that their rows are now concatenated
 mappendrows :: Matrix a -> Matrix a -> Matrix a
@@ -566,12 +567,12 @@ mfoldr1c f = DL.foldr1 f . DL.map Vector . unmatrix . transpose
 
 -- | Multiply a matrix by a column vector
 matvec :: Num b => Matrix b -> Vector b -> Vector b
-matvec (Matrix m) (Vector v) = Vector $ P.map (sum . zipWith (*) v) rows
-    where rows = DL.transpose m
+matvec (Matrix m) (Vector v) = Vector $ P.map (sum . zipWith (*) v) m
 
 -- | Multiply a row vector by a matrix
 vecmat :: Num b => Vector b -> Matrix b -> Vector b
-vecmat (Vector v) (Matrix m) = Vector $ P.map (sum . zipWith (*) v) m
+vecmat (Vector v) (Matrix m) = Vector $ P.map (sum . zipWith (*) v) cols
+    where cols = DL.transpose m
 
 -- | Multiply two matrices
 matmat :: Num b => Matrix b -> Matrix b -> Matrix b
