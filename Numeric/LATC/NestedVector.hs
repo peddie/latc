@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -22,11 +23,17 @@ module Numeric.LATC.NestedVector (
                                , size
                                , mmap
                                , transpose
+                               , mbinary
+                               , mindex
+                               , mappendrows
+                               , mappendcols
                                  -- * Structural functions between @Vector@s and @Matrix@es
                                , toRows
                                , fromRows
+                               , mRow
                                , toCols
                                , fromCols
+                               , mCol
                                  -- * Math functions
                                , matvec
                                , vecmat
@@ -37,11 +44,20 @@ module Numeric.LATC.NestedVector (
 
 import qualified Data.Vector as DV
 
+import Data.Data (Data(..), Typeable(..))
+
 -- | A matrix abstraction for nested lists
-newtype Matrix a = Matrix {unmatrix :: DV.Vector (DV.Vector a)} deriving (Eq)
+newtype Matrix a = Matrix {unmatrix :: DV.Vector (DV.Vector a)} deriving (Eq, Ord, Data, Typeable)
 
 instance Show a => Show (Matrix a) where
     show (Matrix m) = "Matrix " ++ show m
+
+instance Functor Matrix where
+    fmap = mmap
+
+instance Monad Matrix where
+    return = fromLists . return . return
+--    (>>=) = 
 
 -- | Convert nested lists into column-major nested vector matrices
 fromLists :: [[a]] -> Matrix a
@@ -68,6 +84,25 @@ transpose' v | DV.null v = v
              | DV.null (DV.head v) = transpose' $ DV.tail v
              | otherwise = DV.map DV.head v `DV.cons` transpose' (DV.map DV.tail v)
 
+-- | Apply a binary function @f@ to two @Matrix@es
+mbinary :: (a -> b -> c) -> Matrix a -> Matrix b -> Matrix c
+mbinary f (Matrix m1) (Matrix m2) = Matrix $ DV.zipWith veczip m1 m2
+    where veczip = DV.zipWith f
+
+-- | Return the element at the given @(row, column)@ position
+mindex :: Matrix a -> (Int, Int) -> a
+mindex (Matrix m) (r, c) = (m DV.! r) DV.! c
+
+-- | Concatenate two matrices such that their rows are now
+-- concatenated
+mappendrows :: Matrix a -> Matrix a -> Matrix a
+mappendrows (Matrix m1) (Matrix m2) = Matrix $ DV.zipWith (DV.++) m1 m2
+
+-- | Concatenate two matrices such that their columns are now
+-- concatenated
+mappendcols :: Matrix a -> Matrix a -> Matrix a
+mappendcols (Matrix m1) (Matrix m2) = Matrix $ transpose' $ DV.zipWith (DV.++) (transpose' m1) (transpose' m2)
+
 -- | Split a matrix into a list of vectors of its columns
 toCols :: Matrix a -> [DV.Vector a]
 toCols = DV.toList . unmatrix
@@ -76,6 +111,10 @@ toCols = DV.toList . unmatrix
 fromCols :: [DV.Vector a] -> Matrix a
 fromCols = Matrix . DV.fromList
 
+-- | Get the specified column vector from a matrix
+mCol :: Matrix a -> Int -> DV.Vector a
+mCol (Matrix m) i = (transpose' m) DV.! i
+
 -- | Split a matrix into a list of vectors of its rows
 toRows :: Matrix a -> [DV.Vector a]
 toRows (Matrix m) = DV.toList $ transpose' m
@@ -83,6 +122,10 @@ toRows (Matrix m) = DV.toList $ transpose' m
 -- | Form a matrix out of a list of vectors of its rows
 fromRows :: [DV.Vector a] -> Matrix a
 fromRows = Matrix . transpose' . DV.fromList
+
+-- | Get the specified row vector from a matrix
+mRow :: Matrix a -> Int -> DV.Vector a
+mRow (Matrix m) i = m DV.! i
 
 -- | Multiply a matrix by a column vector
 matvec :: Num b => Matrix b -> DV.Vector b -> DV.Vector b

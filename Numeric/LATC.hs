@@ -25,10 +25,6 @@ module Numeric.LATC where
 
 import GHC.Prim (Constraint)
 
--- Import list instances
-
-import qualified Numeric.LATC.NestedList as NL
-
 -- Data.Vector is another alternative instance
 
 import qualified Data.Vector as DV
@@ -84,19 +80,42 @@ class Vector v where
     length :: Vec v e => v e -> Int
     -- | Apply a function to each element of a vector and return the
     -- results in a vector.
-    map :: (Vec v e, Vec v f) => (e -> f) -> v e -> v f
+    vmap :: (Vec v e, Vec v f) => (e -> f) -> v e -> v f
     -- | Apply a binary operation, element-wise, to a pair of vectors,
     -- and return the results in a vector.
     vbinary :: (Vec v e, Vec v f, Vec v g) => (e -> f -> g) -> v e -> v f -> v g
     -- | Return the element at the given position within the vector:
     -- @vindex (fromList [22]) 0 == 22@
     vindex :: Vec v e => v e -> Int -> e
-    -- | Concatenate two vectors end-to-end: @vconcat (fromList
+    -- | Append one vector to the end of another: @vappend (fromList
     -- [22,23]) (fromList [24, 25]) == fromList [22..25]@
-    vconcat :: Vec v e => v e -> v e -> v e
+    vappend :: Vec v e => v e -> v e -> v e
+    -- | Concatenate a list of vectors together end-to-end.
+    vconcat :: Vec v e => [v e] -> v e
+    
+    -- Functional usage
+    -- | The first element in a vector
+    vhead :: Vec v e => v e -> e
+    -- | The last element in a vector
+    vlast :: Vec v e => v e -> e
+    -- | The tail of a vector
+    vtail :: Vec v e => v e -> v e
+    -- | All the elements but the last of a vector
+    vinit :: Vec v e => v e -> v e
+    -- | Reverse a vector
+    vreverse :: Vec v e => v e -> v e
+    -- | Left fold across a vector
+    vfoldl :: Vec v e => (a -> e -> a) -> a -> v e -> a
+    -- | Left fold across a vector using the head of the vector as the
+    -- initial element
+    vfoldl1 :: Vec v e => (e -> e -> e) -> v e -> e
+    -- | Right fold across a vector
+    vfoldr :: Vec v e => (e -> a -> a) -> a -> v e -> a
+    -- | Right fold across a vector using the head of the vector as
+    -- the initial element
+    vfoldr1 :: Vec v e => (e -> e -> e) -> v e -> e
 
 -- | Matrix works similarly to Vector.
-
 type Mat m e = (Matrix m, MBox m e)
 class Matrix m where
     type MBox m e :: Constraint
@@ -118,13 +137,39 @@ class Matrix m where
     -- | Return the element at the given position within the matrix:
     -- @mindex (fromLists [[22]]) (0, 0) == 22@
     mindex :: Mat m e => m e -> (Int, Int) -> e
-    -- | Concatenate two matrices such that their rows are now
-    -- concatenated (i.e. side-by-side).
-    mconcatrows :: Mat m e => m e -> m e -> m e
-    -- | Concatenate two matrices such that their columns are now
+    -- | Append one matrix to another so that their rows are now
+    -- concatenated (i.e. left-to-right).
+    mappendrows :: Mat m e => m e -> m e -> m e
+    -- | Append one matrix to another so that their columns are now
     -- concatenated (i.e. top-to-bottom).
-    mconcatcols :: Mat m e => m e -> m e -> m e
-
+    mappendcols :: Mat m e => m e -> m e -> m e
+    -- | Concatenate a list of matrices left-to-right so that their
+    -- rows are now concatenated.
+    mconcatrows :: Mat m e => [m e] -> m e
+    -- | Concatenate a list of matrices top-to-bottom so that their
+    -- columns are now concatenated.
+    mconcatcols :: Mat m e => [m e] -> m e
+    
+    -- Functional usage of matrices
+    -- | The row-wise tail of a matrix (i.e. a matrix of all rows but
+    -- the first)
+    mtailr :: Mat m e => m e -> m e
+    -- | The row-wise init of a matrix (i.e. a matrix of all rows but
+    -- the last)
+    minitr :: Mat m e => m e -> m e
+    -- | The column-wise tail of a matrix (i.e. a matrix of all
+    -- columns but the first)
+    mtailc :: Mat m e => m e -> m e
+    -- | The column-wise init of a matrix (i.e. a matrix of all
+    -- columns but the last)
+    minitc :: Mat m e => m e -> m e
+    -- | Reverse the order of rows within a matrix (equivalent to
+    -- reversing all the column vectors)
+    mreverser :: Mat m e => m e -> m e
+    -- | Reverse the order of columns within a matrix (equivalent to
+    -- reversing all the row vectors)
+    mreversec :: Mat m e => m e -> m e
+                   
 -- | Related types for matrices and vectors.  These methods involve
 -- both structures, but they make no additional demands on the type of
 -- the element.
@@ -147,6 +192,42 @@ class (Matrix m, Vector v) => MV m v where
     -- | Return the column vector at the specified index within the
     -- matrix: @mCol (fromLists [[22]]) 0 == fromList [22]@
     mCol :: MatVec m v e => m e -> Int -> v e
+
+    -- Functional usage of matrices -- folds etc. depend on a related
+    -- @Vector@ type
+
+    -- | The first row of a matrix
+    mheadr :: MatVec m v e => m e -> v e
+    -- | The last row of a matrix
+    mlastr :: MatVec m v e => m e -> v e
+    -- | The first column of a matrix
+    mheadc :: MatVec m v e => m e -> v e
+    -- | The last column of a matrix
+    mlastc :: MatVec m v e => m e -> v e
+    -- | Left fold across the row vectors (i.e. top to bottom) of a
+    -- matrix
+    mfoldlr :: MatVec m v e => (a -> v e -> a) -> a -> m e -> a
+    -- | Left fold across the row vectors (i.e. top to bottom) of a
+    -- matrix, using the first row vector as an initial argument
+    mfoldl1r :: MatVec m v e => (v e -> v e -> v e) -> m e -> v e
+    -- | Left fold across the column vectors (i.e. left to right) of a
+    -- matrix
+    mfoldlc :: MatVec m v e => (a -> v e -> a) -> a -> m e -> a
+    -- | Left fold across the column vectors (i.e. left to right) of a
+    -- matrix, using the first column vector as an initial argument
+    mfoldl1c :: MatVec m v e => (v e -> v e -> v e) -> m e -> v e
+    -- | Right fold across the row vectors (i.e. top to bottom) of a
+    -- matrix
+    mfoldrr :: MatVec m v e => (v e -> a -> a) -> a -> m e -> a
+    -- | Right fold across the row vectors (i.e. top to bottom) of a
+    -- matrix, using the first row vector as an initial argument
+    mfoldr1r :: MatVec m v e => (v e -> v e -> v e) -> m e -> v e
+    -- | Right fold across the column vectors (i.e. left to right) of a
+    -- matrix
+    mfoldrc :: MatVec m v e => (v e -> a -> a) -> a -> m e -> a
+    -- | Right fold across the column vectors (i.e. left to right) of a
+    -- matrix, using the first column vector as an initial argument
+    mfoldr1c :: MatVec m v e => (v e -> v e -> v e) -> m e -> v e
 
 -- | Linear algebra on matrices and vectors.  These methods involve
 -- both structures, and they require operands to have numeric
@@ -189,12 +270,6 @@ class Matrix m => SMatrix m where
     smFromList :: SMat m e => [(e, Int, Int)] -> Int -> m e
     smToList :: SMat m e => m e -> [(e, Int, Int)]
 
----------------
--- Instances --
----------------
-
--- List instances
-
 -------------------
 -- WARNING WARNING WARNING
 -- 
@@ -202,59 +277,17 @@ class Matrix m => SMatrix m where
 -- EVERY INSTANCE, even though all the classes have sane defaults.  I
 -- think this is a GHC bug.
 
-instance Vector NL.Vector where
-    type VBox NL.Vector e = ()
-    fromList = NL.fromList
-    toList = NL.toList
-    length = NL.length
-    map = NL.map
-    vbinary = NL.vbinary
-    vindex = NL.vindex
-    vconcat = NL.vconcat
-
-instance Matrix NL.Matrix where
-    type MBox NL.Matrix e = ()
-    fromLists = NL.fromLists
-    toLists = NL.toLists
-    size = NL.size
-    mmap = NL.mmap
-    transpose = NL.transpose
-    mbinary = NL.mbinary
-    mindex = NL.mindex
-    mconcatrows = NL.mconcatrows
-    mconcatcols = NL.mconcatcols
-
-instance MV NL.Matrix NL.Vector where
-    type MVBox NL.Matrix NL.Vector e = ()
-    fromCols = NL.fromCols
-    toCols = NL.toCols
-    fromRows = NL.fromRows
-    toRows = NL.toRows
-    mCol = NL.mCol
-    mRow = NL.mRow
-
-instance LinAlg NL.Matrix NL.Vector where
-    type LinAlgBox NL.Matrix NL.Vector e = Num e 
-    mv = NL.matvec
-    vm = NL.vecmat
-    mm = NL.matmat
-    inner = NL.inner
-    outer = NL.outer
-
 -- Data.Vector instances
-
--- I have the same problem with nesting Data.Vector.Vector to form a
--- matrix.
-
--- type NestedVector = DV.Vector :. DV.Vector
--- instance Matrix NestedVector where
 
 instance Vector DV.Vector where
     type VBox DV.Vector e = ()
     fromList = DV.fromList
     toList = DV.toList
     length = DV.length
-    map = DV.map
+    vmap = DV.map
+    vbinary = DV.zipWith
+    vindex = (DV.!)
+    vappend = (DV.++)
 
 instance Matrix NV.Matrix where
     type MBox NV.Matrix e = ()
@@ -263,13 +296,19 @@ instance Matrix NV.Matrix where
     size = NV.size
     mmap = NV.mmap
     transpose = NV.transpose
+    mbinary = NV.mbinary
+    mindex = NV.mindex
+    mappendrows = NV.mappendrows
+    mappendcols = NV.mappendcols
 
 instance MV NV.Matrix DV.Vector where
     type MVBox NV.Matrix DV.Vector e = ()
     fromCols = NV.fromCols
     toCols = NV.toCols
+    mCol = NV.mCol
     fromRows = NV.fromRows
     toRows = NV.toRows
+    mRow = NV.mRow
 
 instance LinAlg NV.Matrix DV.Vector where
     type LinAlgBox NV.Matrix DV.Vector e = Num e 
@@ -281,14 +320,15 @@ instance LinAlg NV.Matrix DV.Vector where
 
 -- HMatrix instances
 
--- All the HMatrix instances work without much fuss.
-
 instance Vector PV.Vector where
     type VBox PV.Vector b = (Vector PV.Vector, Storable b)
     fromList = PV.fromList
     toList = PV.toList
     length = PV.dim
-    map = PV.mapVector
+    vmap = PV.mapVector
+    vbinary = PV.zipVectorWith
+    vindex = (PV.@>)
+    vappend a b = PV.join [a, b]
 
 instance Matrix PM.Matrix where
     type MBox PM.Matrix b = (Matrix PM.Matrix, PM.Element b)
@@ -297,6 +337,10 @@ instance Matrix PM.Matrix where
     size a = (PM.rows a, PM.cols a)
     mmap = PM.mapMatrix
     transpose = PM.trans
+    mbinary = PM.liftMatrix2 . vbinary
+    mindex = (PM.@@>)
+    mappendrows a b = PM.fromBlocks [[a, b]]
+    mappendcols a b = PM.fromBlocks [[a], [b]]
 
 -- | The nice part about this approach is how the default constraint
 -- type for MVBox simply intersects the MBox and VBox constraint types
@@ -305,8 +349,10 @@ instance Matrix PM.Matrix where
 instance MV PM.Matrix PV.Vector where
     fromRows = PM.fromRows
     toRows = PM.toRows
+    mRow m i = (PM.toRows m) P.!! i
     fromCols = PM.fromColumns
     toCols = PM.toColumns
+    mCol m i = (PM.toColumns m) P.!! i
 
 -- | We weren't as lucky here as with MV.  Although the default
 -- LinAlgBox type requires the element to be a Num instance, we have
@@ -319,3 +365,4 @@ instance LinAlg PM.Matrix PV.Vector where
     mm = NC.mXm
     inner = (NC.<.>)
     outer = NC.outer
+
