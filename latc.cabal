@@ -27,7 +27,13 @@ source-repository head
   location: git://github.com/peddie/latc.git
 
 Library
-  build-depends: base == 4.*, repa == 3.2.*, hmatrix == 0.14.*, containers == 0.4.*, vector == 0.9.*, ghc-prim
+  build-depends: base == 4.*,
+                 repa == 3.2.*,
+                 hmatrix == 0.14.*,
+                 containers == 0.4.*,
+                 vector == 0.9.*,
+                 hashable  >= 1.1 && < 1.2,
+                 ghc-prim
 
   exposed-modules: Numeric.LATC, Numeric.LATC.NestedList, Numeric.LATC.NestedVector
   other-modules: 

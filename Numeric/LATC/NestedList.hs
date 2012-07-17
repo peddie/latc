@@ -54,18 +54,41 @@ module Numeric.LATC.NestedList (
 import Prelude hiding (length, map)
 import qualified Prelude as P
 import qualified Data.List as DL
+import Data.Hashable ( Hashable(..) )
 
 -- | A vector abstraction for lists
-newtype Vector a = Vector {unvector :: [a]} deriving (Eq)
+newtype Vector a = Vector {unvector :: [a]} deriving (Eq,Ord)
 
 -- | A matrix abstraction for nested lists
-newtype Matrix a = Matrix {unmatrix :: [[a]]} deriving (Eq)
+newtype Matrix a = Matrix {unmatrix :: [[a]]} deriving (Eq,Ord)
 
 instance Show a => Show (Matrix a) where
     show (Matrix m) = "Matrix " ++ show m
 
 instance Show a => Show (Vector a) where
     show (Vector v) = "Vector " ++ show v
+
+instance Hashable a => Hashable (Matrix a) where
+  hash = hash
+
+instance Hashable a => Hashable (Vector a) where
+  hash = hash
+
+instance Num a => Num (Vector a) where
+  (+) = vbinary (+)
+  (*) = vbinary (*)
+  (-) = vbinary (-)
+
+  abs = map abs
+  signum = map signum
+
+instance Num a => Num (Matrix a) where
+  (+) = mbinary (+)
+  (*) = mbinary (*)
+  (-) = mbinary (-)
+
+  abs = mmap abs
+  signum = mmap signum
 
 -- | Convert a list to a @Vector@
 fromList :: [b] -> Vector b
