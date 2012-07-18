@@ -17,7 +17,12 @@
 -- Stability   :  experimental
 -- Portability :  GHC
 --
--- Type classes for linear algebra -- flexible backends.
+-- Type classes for linear algebra -- flexible backends.  
+--
+-- Regarding the Repa backend: there is a lot going on with Repa's
+-- execution model, and I've bypassed it almost entirely here, just
+-- for the sake of demonstrating that one can write correct and
+-- well-typed programs that run on multiple backends.  
 -----------------------------------------------------------------------------
 
 module Numeric.LATC where
@@ -46,6 +51,11 @@ import qualified Data.IntMap as IM -- Can't wait for containers-0.5
 -- Repa arrays for maximum parallel
 
 import qualified Data.Array.Repa as DR
+import Data.Array.Repa ((:.)(..), Z(..), All(..))
+import qualified Data.Array.Repa.Eval as DRE
+import qualified Data.Array.Repa.Shape as DRS
+import qualified Data.Array.Repa.Repr.Unboxed as DRU
+import Data.Array.Repa.Repr.Unboxed (U)
 
 -- Finally, hide Prelude stuff to make things less confusing.
 
@@ -465,4 +475,48 @@ instance LinAlg PM.Matrix PV.Vector where
     mm = NC.mXm
     inner = (NC.<.>)
     outer = NC.outer
+
+-- | Minimal Repa instance.
+instance Vector (DR.Array r DR.DIM1) where
+    type VBox (DR.Array r DR.DIM1) e = (Vector (DR.Array r DR.DIM1), DRE.Target r e, DR.Source r e)
+    fromList l = DRE.fromList (DRS.shapeOfList [P.length l]) l
+    toList = DR.toList
+
+-- | Minimal Repa instance.
+instance Matrix (DR.Array r DR.DIM2) where
+    type MBox (DR.Array r DR.DIM2) e = (Matrix (DR.Array r DR.DIM2), DRE.Target r e, DR.Source r e)
+    fromLists ls = DRE.fromList (DRS.shapeOfList [r, c]) $ P.concat ls
+        where (r, c) = (P.length ls, case P.take 1 ls of
+                                       [] -> 0
+                                       x -> P.length x)
+    toLists m = P.reverse $ grp c [] fl
+        where grp _ acc [] = acc
+              grp n acc xx | P.length xx > n = grp n (xh : acc) xt
+                           | P.length xx == n = xx : acc
+                           | otherwise = error "Serious problem in list conversion with the LATC Repa backend."
+                  where (xh, xt) = DL.splitAt n xx
+              fl = DR.toList m
+              (_, c) = case DRS.listOfShape $ DR.extent $ m of
+                         [x, y] -> (x, y)
+                         _ -> error "Serious problem in shape handing with the LATC Repa backend."
+
+
+-- | Minimal Repa instance.
+instance MV (DR.Array r DR.DIM2) (DR.Array r DR.DIM1) where
+
+-- | Minimal Repa instance, for only @Unboxed@ arrays.  I have to
+-- provide two method implementations for these; when you have
+-- something other than the default for the associated type synonym,
+-- these methods' default implementations are rejected by the type
+-- checker, because they use only @m@ or only @v@ in the type.
+instance LinAlg (DR.Array U DR.DIM2) (DR.Array U DR.DIM1) where
+    type LinAlgBox (DR.Array U DR.DIM2) (DR.Array U DR.DIM1) e = (Num e, DRU.Unbox e, DRE.Elt e)
+    inner a b = DR.sumAllS $ DR.zipWith (+) a b
+    mm a b = DR.sumS (DR.zipWith (*) aRepl bRepl)
+        where
+          t = DR.transpose b
+          aRepl = DR.extend (Z :. All :. colsB :. All) a
+          bRepl = DR.extend (Z :. rowsA :. All :. All) t
+          (Z :._ :.rowsA) = DR.extent a
+          (Z :.colsB :._) = DR.extent b
 
