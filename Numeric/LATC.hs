@@ -27,10 +27,9 @@ module Numeric.LATC where
 
 import GHC.Prim (Constraint)
 
--- Data.Vector is another alternative instance
+-- Data.Vector backend
 
 import qualified Data.Vector as DV
-import qualified Numeric.LATC.NestedVector as NV
 
 -- Get HMatrix stuff.
 
@@ -51,7 +50,7 @@ import qualified Data.Array.Repa as DR
 -- Finally, hide Prelude stuff to make things less confusing.
 
 import qualified Prelude as P
-import Prelude (Num(..), ($), (.), Int, sqrt, Floating(..), (==), error, Functor)
+import Prelude (Num(..), ($), (.), Int, sqrt, Floating(..), (==), error, Functor, otherwise, Ord(..))
 import qualified Data.List as DL
 
 -------------
@@ -352,27 +351,25 @@ class MV m v => LinAlg m v where
     type LinAlgBox m v e = (MBox m e, VBox v e, Num e)
     -- | Multiply a matrix by a column vector.
     mv :: LA m v e => m e -> v e -> v e
-    default mv :: (Num e, Vector v, VBox v e, Matrix m, MBox m e, MatVec m v e, MVBox m v e, LinAlgBox m v e) => m e -> v e -> v e
+    default mv :: (Num e, LA m v e) => m e -> v e -> v e
     mv m v = fromList $ P.map (P.sum . P.zipWith (*) (toList v)) $ toLists m
     -- | Multiply a row vector by a matrix.
     vm :: LA m v e => v e -> m e -> v e
-    default vm :: (Num e, Vector v, VBox v e, Matrix m, MBox m e, MatVec m v e, MVBox m v e, LinAlgBox m v e) => v e -> m e -> v e
+    default vm :: (Num e, LA m v e) => v e -> m e -> v e
     vm v m = fromList $ P.map (P.sum . P.zipWith (*) (toList v)) $ DL.transpose $ toLists m
     -- | Multiply two matrices.
     mm :: LA m v e => m e -> m e -> m e
     -- jesus flying spaghetti monster christ
-    default mm :: (Num e, Vector v, VBox v e, Matrix m, MBox m e, MatVec m v e, MVBox m v e, LinAlgBox m v e) => m e -> m e -> m e
-    mm (a :: m e) (b :: m e) = fromCols $ P.map (mv a) bc
-        where
-          bc :: (Num e, Vector v, VBox v e, Matrix m, MBox m e, MatVec m v e, MVBox m v e, LinAlgBox m v e) => [v e]
-          bc = toCols b
+    default mm :: (Num e, LA m v e) => m e -> m e -> m e
+    mm (a :: m e) (b :: m e) = fromCols $ P.map (mv a) $ (toCols b :: (Num e, LA m v e) => [v e])
+
     -- | Form a matrix by the outer product of two vectors.
     outer :: LA m v e => v e -> v e -> m e
-    default outer :: (Num e, Vector v, VBox v e, Matrix m, MBox m e, MatVec m v e, MVBox m v e, LinAlgBox m v e) => v e -> v e -> m e
+    default outer :: (Num e, LA m v e) => v e -> v e -> m e
     outer a b = fromLists $ P.map (\x -> [x*v | v <- (toList a)]) (toList b)
     -- | Compute the inner (dot) product of two vectors.
     inner :: LA m v e => v e -> v e -> e
-    default inner :: (Num e, Vector v, VBox v e) => v e -> v e -> e
+    default inner :: (Num e, LA m v e) => v e -> v e -> e
     inner a b = P.sum $ P.zipWith (*) (toList a) (toList b)
 
 -- | Sparse vectors.  A sparse vector backend must be an instance of
@@ -404,8 +401,11 @@ class Matrix m => SMatrix m where
 -- EVERY INSTANCE, even though all the classes have sane defaults.  I
 -- think this is a GHC bug.
 
--- Data.Vector instances
+-- Below are instances for existing backends.  I'm trying to avoid
+-- orphan instances, but these would be a lot nicer in a different
+-- module, one for each backend.
 
+-- | @Data.Vector@ instance
 instance Vector DV.Vector where
     type VBox DV.Vector e = ()
     fromList = DV.fromList
@@ -416,37 +416,7 @@ instance Vector DV.Vector where
     vindex = (DV.!)
     vappend = (DV.++)
 
-instance Matrix NV.Matrix where
-    type MBox NV.Matrix e = ()
-    fromLists = NV.fromLists
-    toLists = NV.toLists
-    size = NV.size
-    mmap = NV.mmap
-    transpose = NV.transpose
-    mbinary = NV.mbinary
-    mindex = NV.mindex
-    mappendrows = NV.mappendrows
-    mappendcols = NV.mappendcols
-
-instance MV NV.Matrix DV.Vector where
-    type MVBox NV.Matrix DV.Vector e = ()
-    fromCols = NV.fromCols
-    toCols = NV.toCols
-    mCol = NV.mCol
-    fromRows = NV.fromRows
-    toRows = NV.toRows
-    mRow = NV.mRow
-
-instance LinAlg NV.Matrix DV.Vector where
-    type LinAlgBox NV.Matrix DV.Vector e = Num e 
-    mv = NV.matvec
-    vm = NV.vecmat
-    mm = NV.matmat
-    inner = NV.inner
-    outer = NV.outer
-
--- HMatrix instances
-
+-- | HMatrix (@Data.Packed.Vector@) instance
 instance Vector PV.Vector where
     type VBox PV.Vector b = (Vector PV.Vector, Storable b)
     fromList = PV.fromList
@@ -457,6 +427,7 @@ instance Vector PV.Vector where
     vindex = (PV.@>)
     vappend a b = PV.join [a, b]
 
+-- | HMatrix (@Data.Packed.Matrix@) instance
 instance Matrix PM.Matrix where
     type MBox PM.Matrix b = (Matrix PM.Matrix, PM.Element b)
     fromLists = PM.fromLists
@@ -469,10 +440,11 @@ instance Matrix PM.Matrix where
     mappendrows a b = PM.fromBlocks [[a, b]]
     mappendcols a b = PM.fromBlocks [[a], [b]]
 
--- | The nice part about this approach is how the default constraint
--- type for MVBox simply intersects the MBox and VBox constraint types
--- for the declared matrix and vector instances, so we don't have to
--- declare anything in spite of HMatrix's annoying shit.
+-- | HMatrix instance.  The nice part about this approach is how the
+-- default constraint type for @MVBox@ simply intersects the @MBox@
+-- and @VBox@ constraint types for the declared matrix and vector
+-- instances, so we don't have to declare anything in spite of
+-- HMatrix's annoying shit.
 instance MV PM.Matrix PV.Vector where
     fromRows = PM.fromRows
     toRows = PM.toRows
@@ -481,10 +453,11 @@ instance MV PM.Matrix PV.Vector where
     toCols = PM.toColumns
     mCol m i = (PM.toColumns m) P.!! i
 
--- | We weren't as lucky here as with MV.  Although the default
--- LinAlgBox type requires the element to be a Num instance, we have
--- to add our own constraint for NC.Product, because as usual, HMatrix
--- decided to add some more random-ass typeclass constraints.
+-- | HMatrix instance.  We weren't as lucky here as with @MV@.
+-- Although the default @LinAlgBox@ type requires the element to be a
+-- @Num@ instance, we have to add our own constraint for @NC.Product@,
+-- because as usual, HMatrix decided to add some more random-ass
+-- typeclass constraints.
 instance LinAlg PM.Matrix PV.Vector where
     type LinAlgBox PM.Matrix PV.Vector e = (MBox PM.Matrix e, VBox PV.Vector e, Num e, NC.Product e)
     mv = NC.mXv

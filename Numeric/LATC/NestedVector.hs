@@ -1,5 +1,8 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveDataTypeable, DeriveGeneric #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ConstraintKinds #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -11,7 +14,7 @@
 -- Stability   :  experimental
 -- Portability :  GHC
 --
--- Nested Data.Vector.Vectors as a matrix backend
+-- Nested Data.Vector.Vectors as a matrix backend.
 -----------------------------------------------------------------------------
 
 module Numeric.LATC.NestedVector (
@@ -45,9 +48,12 @@ module Numeric.LATC.NestedVector (
 import qualified Data.Vector as DV
 
 import Data.Data (Data(..), Typeable(..))
+import GHC.Generics (Generic(..))
+
+import qualified Numeric.LATC as LATC
 
 -- | A matrix abstraction for nested lists
-newtype Matrix a = Matrix {unmatrix :: DV.Vector (DV.Vector a)} deriving (Eq, Ord, Data, Typeable)
+newtype Matrix a = Matrix {unmatrix :: DV.Vector (DV.Vector a)} deriving (Eq, Ord, Data, Typeable, Generic)
 
 instance Show a => Show (Matrix a) where
     show (Matrix m) = "Matrix " ++ show m
@@ -58,6 +64,38 @@ instance Functor Matrix where
 instance Monad Matrix where
     return = fromLists . return . return
 --    (>>=) = 
+
+-- | Instance for @Numeric.LATC.NestedVector@ matrices.
+instance LATC.Matrix Matrix where
+    type MBox Matrix e = ()
+    fromLists = fromLists
+    toLists = toLists
+    size = size
+    mmap = mmap
+    transpose = transpose
+    mbinary = mbinary
+    mindex = mindex
+    mappendrows = mappendrows
+    mappendcols = mappendcols
+
+-- | Instance for @Numeric.LATC.NestedVector@
+instance LATC.MV Matrix DV.Vector where
+    type MVBox Matrix DV.Vector e = ()
+    fromCols = fromCols
+    toCols = toCols
+    mCol = mCol
+    fromRows = fromRows
+    toRows = toRows
+    mRow = mRow
+
+-- | Instance for @Numeric.LATC.NestedVector@
+instance LATC.LinAlg Matrix DV.Vector where
+    type LinAlgBox Matrix DV.Vector e = Num e 
+    mv = matvec
+    vm = vecmat
+    mm = matmat
+    inner = inner
+    outer = outer
 
 -- | Convert nested lists into column-major nested vector matrices
 fromLists :: [[a]] -> Matrix a

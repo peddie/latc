@@ -160,6 +160,10 @@ instance Applicative Vector where
     pure = return
     (<*>) = ap
 
+-- | We instance @Monad@ here because in general, an instance of
+-- @LATC.Vector@ has to be a restricted monad; @Monad@ itself is only
+-- a constructor class, but you can't separate an instance of @Vector@
+-- from the @Vec@/@VBox@ constraints that go with it.
 instance Monad Vector where
     return = fromList . return
     x >>= f = vconcat $ toList $ vmap f x
@@ -231,7 +235,7 @@ instance Arbitrary a => Arbitrary (Matrix a) where
 -- Should a Foldable instance for Matrix use a column fold or a row
 -- fold?
 
--- | LATC instances
+-- | Instance for @Numeric.LATC.NestedList@ vectors.
 instance LATC.Vector Vector where
     type VBox Vector e = ()
     fromList = fromList
@@ -252,6 +256,7 @@ instance LATC.Vector Vector where
     vfoldr = vfoldr
     vfoldr1 = vfoldr1
 
+-- | Instance for @Numeric.LATC.NestedList@ matrices.
 instance LATC.Matrix Matrix where
     type MBox Matrix e = ()
     fromLists = fromLists
@@ -272,6 +277,7 @@ instance LATC.Matrix Matrix where
     mreverser = mreverser
     mreversec = mreversec
 
+-- | Instance for @Numeric.LATC.NestedList@
 instance LATC.MV Matrix Vector where
     type MVBox Matrix Vector e = ()
     fromCols = fromCols
@@ -293,6 +299,7 @@ instance LATC.MV Matrix Vector where
     mfoldrc = mfoldrc
     mfoldr1c = mfoldr1c
 
+-- | Instance for @Numeric.LATC.NestedList@
 instance LATC.LinAlg Matrix Vector where
     type LinAlgBox Matrix Vector e = Num e 
     mv = matvec
