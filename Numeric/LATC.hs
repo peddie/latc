@@ -169,7 +169,7 @@ class Vector v where
 -- @mappend@ will yield a faster @mconcat@ for free.  
 --
 -- This also happens in @fold@ functions -- if you define @vfoldr@,
---you get a native implementation of the rest for free.
+-- you get a native implementation of the rest for free.
 type Mat m e = (Matrix m, MBox m e)
 class Matrix m where
     type MBox m e :: Constraint
@@ -187,6 +187,8 @@ class Matrix m where
     -- | Apply a function to each element of a matrix and return the
     -- results in a matrix.
     mmap :: (Mat m e, Mat m f) => (e -> f) -> m e -> m f
+    -- I'd love to give this default in terms of a fold, but it's in a
+    -- different class because it needs an associated Vector type.
     mmap f m = fromLists $ P.map (P.map f) $ toLists m
     -- | Transpose a matrix.
     transpose :: Mat m e => m e -> m e
